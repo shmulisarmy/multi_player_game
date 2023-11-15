@@ -3,7 +3,7 @@ import threading
 import random as rnd
 import json
 
-WIDTH, HEIGHT = 1000, 1000
+WIDTH, HEIGHT = 1500, 1000
 
 class Player:
     def __init__(self):
@@ -14,16 +14,16 @@ class Player:
         self.target = [rnd.randint(0, WIDTH), rnd.randint(0, HEIGHT)]
 
     def move(self, move_to_x, move_to_y):
-        if move_to_x > self.x:
+        if move_to_x > WIDTH/2:
             self.x += self.speed
-        elif move_to_x < self.x:
+        elif move_to_x < WIDTH/2:
             self.x -= self.speed
         else:
             self.target[0] = rnd.randint(0, WIDTH)
 
-        if move_to_y > self.y:
+        if move_to_y > HEIGHT/2:
             self.y += self.speed
-        elif move_to_y < self.y:
+        elif move_to_y < HEIGHT/2:
             self.y -= self.speed
         else:
             self.target[1] = rnd.randint(0, HEIGHT)
@@ -38,9 +38,10 @@ def handle_connection(client):
             connected = False
             break
         players[client].move(*json.loads(receiving_data))
-        client.send(json.dumps(get_all_player_positions()).encode('utf-8'))
+        sending_data = (all_player_positions, (players[client].x - WIDTH/2, players[client].y - HEIGHT/2))
+        client.send(json.dumps(sending_data).encode('utf-8'))
 
-    players.pop(client)
+    players.popitem(client)
     client.close()
 
 def accept_connections():
@@ -51,6 +52,7 @@ def accept_connections():
         thread.start()
 
 def get_all_player_positions():
+    print(len(players))
     return [(players[i].x, players[i].y) for i in players]
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
