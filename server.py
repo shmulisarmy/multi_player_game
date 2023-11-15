@@ -1,55 +1,67 @@
-import socket, threading, random as rnd, json
+import socket
+import threading
+import random as rnd
+import json
 
-class players:
-    players_list = []
+WIDTH, HEIGHT = 1000, 1000
+
+class Player:
     def __init__(self):
-        self.x = rnd.randint(0, width)
-        self.y = rnd.randint(0, height)
+        self.x = rnd.randint(0, WIDTH)
+        self.y = rnd.randint(0, HEIGHT)
         self.speed = 1
         self.size = 50
-        self.target = [rnd.randint(0, width), rnd.randint(0, height)]
+        self.target = [rnd.randint(0, WIDTH), rnd.randint(0, HEIGHT)]
 
     def move(self, move_to_x, move_to_y):
         if move_to_x > self.x:
             self.x += self.speed
-        if move_to_x < self.x:
+        elif move_to_x < self.x:
             self.x -= self.speed
         else:
-            self.target[0] = rnd.randint(0, width)
+            self.target[0] = rnd.randint(0, WIDTH)
 
         if move_to_y > self.y:
             self.y += self.speed
-        if move_to_y < self.y:
+        elif move_to_y < self.y:
             self.y -= self.speed
         else:
-            self.target[1] = rnd.randint(0, height)
-
+            self.target[1] = rnd.randint(0, HEIGHT)
 
 def handle_connection(client):
-    clients[client] = players()
-    while True:
-        msg = client.recv(2048).decode('utf-8')
-        clients[client].move(*json.loads(msg))
-        client.send(json.dumps(all_player_positions).encode('utf-8'))
-    
+    print(client, 'connected')
+    players[client] = Player()
+    connected = True
+    while connected:
+        receiving_data = client.recv(2048).decode('utf-8')
+        if receiving_data == 'disconnect':
+            connected = False
+            break
+        players[client].move(*json.loads(receiving_data))
+        client.send(json.dumps(get_all_player_positions()).encode('utf-8'))
+
+    players.pop(client)
+    client.close()
 
 def accept_connections():
     while True:
         client, address = server.accept()
-        clients[client] = 6
+        players[client] = Player()
         thread = threading.Thread(target=handle_connection, args=(client,))
+        thread.start()
 
-main_thread_1 = threading.Thread(target=accept_connections, args=())
+def get_all_player_positions():
+    return [(players[i].x, players[i].y) for i in players]
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-server.bind((socket.gethostname(socket.gethostname), 5050))
-
+server.bind((socket.gethostbyname(socket.gethostname()), 5050))
 server.listen()
 
-clients = {}
+players = {}
 
-width, height = 1000, 1000
+main_thread = threading.Thread(target=accept_connections, args=())
+main_thread.start()
 
 while True:
-    all_player_positions = [(clients[i].x, clients[i].y) for i in clients]
+    all_player_positions = get_all_player_positions()
+    # Your additional game logic here
